@@ -88,4 +88,17 @@ describe("XJSON", () => {
       expect(parser.fromJSON(parser.toJSON(["foo"]))).toEqual(["foo"]);
     });
   });
+  describe("registerClass", () => {
+    it('should preserve object proto when deserializing', () => {
+      const parser = new XJSON();
+      class Example {};
+
+      parser.registerClass(
+        Example,
+        "Example"
+      );
+
+      expect(parser.fromJSON(parser.toJSON(new Example))).toBeInstanceOf(Example)
+    })
+  })
 });

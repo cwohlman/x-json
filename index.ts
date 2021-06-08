@@ -20,6 +20,19 @@ export class XJSON {
     });
   }
 
+  registerClass<T extends object, TName extends string>(
+    constructor: { new(...args: any): T },
+    name: TName,
+  ) {
+    type SerializedValue = T & { $ctor: string };
+    this.registerType<T, SerializedValue>(
+      (a): a is T => a instanceof constructor && a.constructor == constructor,
+      (a): a is SerializedValue => a && typeof a == "object" && "$ctor" in a ? true : false,
+      (a, parser) => ({ $ctor: name, ...(parser.toJSON({ ...a }) as T)}),
+      ({ $ctor, ...values }, parser) => Object.assign(Object.create(constructor.prototype), parser.fromJSON(values))
+    )
+  }
+
   toJSON(a: unknown): unknown {
     const type = this.types.find(t => t.detectJSType(a));
 
