@@ -23,14 +23,36 @@ export class XJSON {
   registerClass<T extends object, TName extends string>(
     constructor: { new(...args: any): T },
     name: TName,
+    strictConstructorCheck: boolean = true,
   ) {
     type SerializedValue = T & { $ctor: string };
     this.registerType<T, SerializedValue>(
-      (a): a is T => a instanceof constructor && a.constructor == constructor,
+      (a): a is T => a instanceof constructor && (! strictConstructorCheck || a.constructor == constructor),
       (a): a is SerializedValue => a && typeof a == "object" && "$ctor" in a ? true : false,
       (a, parser) => ({ $ctor: name, ...(parser.toJSON({ ...a }) as T)}),
       ({ $ctor, ...values }, parser) => Object.assign(Object.create(constructor.prototype), parser.fromJSON(values))
     )
+  }
+
+  registerNominal<T, TName extends string>(
+    detectType: (value: unknown) => value is T,
+    factory: (...args: unknown[]) => T,
+    serialize: (input: T) => unknown[],
+    name: TName
+  ) {}
+
+  registerNominalClass<T extends object, TName extends string>(
+    constructor: { new(...args: any): T },
+    serialize: (input: T) => unknown[],
+    name: TName,
+    strictConstructorCheck: boolean = true,
+    ) {
+    return this.registerNominal(
+      (a): a is T => a instanceof constructor && (! strictConstructorCheck || a.constructor == constructor),
+      (...args) => new constructor(...args),
+      serialize,
+      name
+    );
   }
 
   toJSON(a: unknown): unknown {

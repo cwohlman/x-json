@@ -1,4 +1,4 @@
-import { XJSON } from "./index";
+import defaultInstance, { XJSON } from "./index";
 
 describe("XJSON", () => {
   describe("Unconfigured parser", () => {
@@ -100,5 +100,41 @@ describe("XJSON", () => {
 
       expect(parser.fromJSON(parser.toJSON(new Example))).toBeInstanceOf(Example)
     })
+  })
+  describe("registerNominal", () => {
+    it("should pass serialized values to the factory")
+  })
+  describe("registerNominalClass", () => {
+    it("should pass serialized values to the constructor")
+  })
+  describe("builtin types", () => {
+    // it('should support UInt8Array', () => {
+    //   expect(defaultInstance.fromJSON(defaultInstance.toJSON(new UInt8Array()))).toBeInstanceOf(UInt8Array)
+    // })
+    it('should support RegExp', () => {
+      expect(new RegExp("foo", "g")).toEqual(new RegExp("foo", "g"))
+      expect(new RegExp("foo")).not.toEqual(new RegExp("foo", "g"))
+      expect(defaultInstance.fromJSON(defaultInstance.toJSON(new RegExp("foo", "g")))).toEqual(new RegExp("foo", "g"))
+    })
+    it('should support Map', () => {
+      expect(defaultInstance.fromJSON(defaultInstance.toJSON(new Map()))).toBeInstanceOf(Map)
+    })
+    it('should support Set', () => {
+      expect(defaultInstance.fromJSON(defaultInstance.toJSON(new Set()))).toBeInstanceOf(Set)
+    })
+    it('should support Date', () => {
+      expect(defaultInstance.fromJSON(defaultInstance.toJSON(new Date()))).toBeInstanceOf(Date)
+    })
+    it('should support Error', () => {
+      expect(defaultInstance.fromJSON(defaultInstance.toJSON(new Error()))).toBeInstanceOf(Error)
+    })
+    // it('should support BigInt', () => {
+    //   expect(defaultInstance.fromJSON(defaultInstance.toJSON(new BigInt()))).toBeInstanceOf(BigInt)
+    // })
+    // it('should support NaN', () => {
+
+    // })
+    // it('should support Positive Infinity')
+    // it('should support Negatitive Infinity')
   })
 });
