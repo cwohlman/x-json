@@ -1,0 +1,19 @@
+{
+  "name": "x-json",
+  "version": "0.0.1",
+  "description": "Serialize more than just json values",
+  "keywords": ["json", "serialize", "deserialize", "class"],
+  "repository": "git@github.com:cwohlman/x-json.git",
+  "author": "Joshua Ohlman <joshua@ohlman.io>",
+  "license": "CC0-1.0",
+
+  "scripts": {
+    "prepublish": "tsc"
+  },
+
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "devDependencies": {
+    "typescript": "^4.3.2"
+  }
+}
