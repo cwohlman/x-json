@@ -33,7 +33,7 @@ describe("XJSON", () => {
         ({ $string }) => $string
       );
 
-      expect(parser.toJSON("foo")).toEqual({ $string: "foo" })
+      expect(parser.toJSON("foo")).toEqual({ $string: "foo" });
     });
     it("should detect & parse custom types", () => {
       const parser = new XJSON();
@@ -45,7 +45,7 @@ describe("XJSON", () => {
         ({ $string }) => $string
       );
 
-      expect(parser.fromJSON({ $string: "foo" })).toEqual("foo")
+      expect(parser.fromJSON({ $string: "foo" })).toEqual("foo");
     });
     it("full circle sanity check for custom types", () => {
       const parser = new XJSON();
@@ -57,7 +57,35 @@ describe("XJSON", () => {
         ({ $string }) => $string
       );
 
-      expect(parser.fromJSON(parser.toJSON("foo"))).toEqual("foo")
-    })
+      expect(parser.fromJSON(parser.toJSON("foo"))).toEqual("foo");
+    });
+    it("should serialize & deserialize nested values in objects", () => {
+      const parser = new XJSON();
+      parser.registerType(
+        (a): a is string => typeof a == "string",
+        (a): a is { $string: string } =>
+          a && typeof a == "object" && "$string" in a,
+        (a) => ({ $string: a }),
+        ({ $string }) => $string
+      );
+
+      expect(parser.toJSON({ x: "foo" })).toEqual({ x: { $string: "foo" } });
+      expect(parser.fromJSON(parser.toJSON({ x: "foo" }))).toEqual({
+        x: "foo",
+      });
+    });
+    it("should serialize nested values in arrays", () => {
+      const parser = new XJSON();
+      parser.registerType(
+        (a): a is string => typeof a == "string",
+        (a): a is { $string: string } =>
+          a && typeof a == "object" && "$string" in a,
+        (a) => ({ $string: a }),
+        ({ $string }) => $string
+      );
+
+      expect(parser.toJSON(["foo"])).toEqual([{ $string: "foo" }]);
+      expect(parser.fromJSON(parser.toJSON(["foo"]))).toEqual(["foo"]);
+    });
   });
 });

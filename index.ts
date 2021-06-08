@@ -27,17 +27,17 @@ export class XJSON {
       return type.toJSON(a, this);
     }
 
-    // if (a instanceof Array) {
-    //   // TODO: string keys of arrays?
+    if (a instanceof Array) {
+      // TODO: string keys of arrays?
 
-    //   return a.map(value => this.toJSON(value));
-    // } else if (a && typeof a === "object") {
-    //   const result: any = {};
+      return a.map(value => this.toJSON(value));
+    } else if (a && typeof a === "object") {
+      const result: any = {};
 
-    //   Object.keys(a).forEach(key => result[key] = this.toJSON((a as any)[key]))
+      Object.keys(a).forEach(key => result[key] = this.toJSON((a as any)[key]))
 
-    //   return result;
-    // }
+      return result;
+    }
 
     return a;
   }
@@ -46,6 +46,17 @@ export class XJSON {
 
     if (type) {
       return type.fromJSON(a, this);
+    }
+    if (a instanceof Array) {
+      // TODO: string keys of arrays?
+
+      return a.map(value => this.fromJSON(value));
+    } else if (a && typeof a === "object") {
+      const result: any = {};
+
+      Object.keys(a).forEach(key => result[key] = this.fromJSON((a as any)[key]))
+
+      return result;
     }
 
     return a;
