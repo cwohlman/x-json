@@ -23,7 +23,7 @@ describe("XJSON", () => {
     });
   });
   describe("registerType", () => {
-    it("should call detectType when serializing", () => {
+    it("should detect & serialize custom types", () => {
       const parser = new XJSON();
       parser.registerType(
         (a): a is string => typeof a == "string",
@@ -34,6 +34,18 @@ describe("XJSON", () => {
       );
 
       expect(parser.toJSON("foo")).toEqual({ $string: "foo" })
+    });
+    it("should detect & parse custom types", () => {
+      const parser = new XJSON();
+      parser.registerType(
+        (a): a is string => typeof a == "string",
+        (a): a is { $string: string } =>
+          a && typeof a == "object" && "$string" in a,
+        (a) => ({ $string: a }),
+        ({ $string }) => $string
+      );
+
+      expect(parser.fromJSON({ $string: "foo" })).toEqual("foo")
     });
   });
 });

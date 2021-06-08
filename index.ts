@@ -42,6 +42,12 @@ export class XJSON {
     return a;
   }
   fromJSON(a: unknown): unknown {
+    const type = this.types.find(t => t.detectRawType(a));
+
+    if (type) {
+      return type.fromJSON(a, this);
+    }
+
     return a;
   }
   parse(input: string): any {
