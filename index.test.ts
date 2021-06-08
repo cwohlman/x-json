@@ -47,5 +47,17 @@ describe("XJSON", () => {
 
       expect(parser.fromJSON({ $string: "foo" })).toEqual("foo")
     });
+    it("full circle sanity check for custom types", () => {
+      const parser = new XJSON();
+      parser.registerType(
+        (a): a is string => typeof a == "string",
+        (a): a is { $string: string } =>
+          a && typeof a == "object" && "$string" in a,
+        (a) => ({ $string: a }),
+        ({ $string }) => $string
+      );
+
+      expect(parser.fromJSON(parser.toJSON("foo"))).toEqual("foo")
+    })
   });
 });
