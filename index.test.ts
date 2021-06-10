@@ -295,8 +295,6 @@ describe("XJSON", () => {
       expect(rehydrated).toBeInstanceOf(Object);
       expect(rehydrated.left.a).toBe(rehydrated.right.a);
       expect(rehydrated.left.b).toBe(rehydrated.right.b);
-
-      console.log(defaultInstance.toJSON(value));
     })
   })
 });
