@@ -27,5 +27,8 @@
   "files": [
     "index.ts",
     "dist/*"
-  ]
+  ],
+  "dependencies": {
+    "base64-js": "^1.5.1"
+  }
 }

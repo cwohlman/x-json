@@ -1,3 +1,5 @@
+import { fromByteArray, toByteArray } from 'base64-js';
+
 export class XJSON {
   types: {
     detectJSType: (value: unknown) => boolean;
@@ -155,11 +157,14 @@ defaultInstance.registerNominal(
 );
 
 // TODO: a more space efficient binary encoding
-defaultInstance.registerType<Uint8Array, { $binary: number[] }>(
+defaultInstance.registerType(
   (value): value is Uint8Array => value instanceof Uint8Array,
-  (value): value is { $binary: number[] } => value && typeof value === "object" && "$binary" in value ? true  : false,
-  (value): { $binary: number[] } => ({ $binary: Buffer.from(value).toJSON().data }),
-  (data) => new Uint8Array(data.$binary)
+  (value): value is { $binary: string } =>
+    value && typeof value === "object" && "$binary" in value ? true : false,
+  (value): { $binary: string } => ({
+    $binary: fromByteArray(value),
+  }),
+  ({ $binary }) => toByteArray($binary),
 );
 defaultInstance.registerNominal(
   (value): value is number => typeof value === "number" && isNaN(value),
@@ -168,9 +173,10 @@ defaultInstance.registerNominal(
   "NaN"
 );
 defaultInstance.registerNominal(
-  (value): value is number => typeof value === "number" && ! isNaN(value) && ! isFinite(value),
+  (value): value is number =>
+    typeof value === "number" && !isNaN(value) && !isFinite(value),
   (value): ["+" | "-"] => [value > 0 ? "+" : "-"],
-  (value) => value == "+" ? Infinity : -Infinity,
+  (value) => (value == "+" ? Infinity : -Infinity),
   "Infinity"
 );
 defaultInstance.registerNominalClass(
@@ -212,7 +218,7 @@ defaultInstance.registerNominalClass(
     const result: unknown[] = [];
 
     value.forEach((value) => result.push(value));
-    
+
     return [result];
   },
   "Set"
