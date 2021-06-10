@@ -1,18 +1,24 @@
-import { fromByteArray, toByteArray } from 'base64-js';
+import { fromByteArray, toByteArray } from "base64-js";
+
+type Visitor = (
+  input: unknown,
+  getOutput: () => unknown,
+  parser: ParseContext
+) => any;
 
 export class XJSON {
   types: {
     detectJSType: (value: unknown) => boolean;
     detectRawType: (value: unknown) => boolean;
-    toJSON: (value: any, parser: XJSON) => any;
-    fromJSON: (value: any, parser: XJSON) => any;
+    toJSON: (value: any, parser: ParseContext) => any;
+    fromJSON: (value: any, parser: ParseContext) => any;
   }[] = [];
 
   registerType<T, S>(
     detectJSType: (value: unknown) => value is T,
     detectRawType: (value: unknown) => value is S,
-    toJSON: (value: T, parser: XJSON) => S,
-    fromJSON: (value: S, parser: XJSON) => T
+    toJSON: (value: T, parser: ParseContext) => S,
+    fromJSON: (value: S, parser: ParseContext) => T
   ): void {
     // the array is backwards in order to prefer later defined types
     this.types.unshift({
@@ -21,6 +27,23 @@ export class XJSON {
       toJSON,
       fromJSON,
     });
+  }
+
+  visitors: {
+    toJSON: Visitor;
+    fromJSON: Visitor;
+  }[] = [];
+
+  registerVisitor(toJSON: Visitor, fromJSON: Visitor) {
+    this.visitors.push({
+      toJSON,
+      fromJSON,
+    });
+  }
+
+  getContext(): ParseContext {
+    if (this instanceof ParseContext) return this;
+    return new ParseContext(this);
   }
 
   registerClass<T extends object, TName extends string>(
@@ -96,54 +119,91 @@ export class XJSON {
 
   toJSON(a: unknown): unknown {
     const type = this.types.find((t) => t.detectJSType(a));
+    const context = this.getContext();
 
-    if (type) {
-      return type.toJSON(a, this);
-    }
+    return context.visit("toJSON", a, () => {
+      if (type) {
+        return type.toJSON(a, context);
+      }
 
-    if (a instanceof Array) {
-      // TODO: string keys of arrays?
+      if (a instanceof Array) {
+        // TODO: string keys of arrays?
 
-      return a.map((value) => this.toJSON(value));
-    } else if (a && typeof a === "object") {
-      const result: any = {};
+        return a.map((value) => context.toJSON(value));
+      } else if (a && typeof a === "object") {
+        const result: any = {};
 
-      Object.keys(a).forEach(
-        (key) => (result[key] = this.toJSON((a as any)[key]))
-      );
+        Object.keys(a).forEach(
+          (key) => (result[key] = context.toJSON((a as any)[key]))
+        );
 
-      return result;
-    }
+        return result;
+      }
 
-    return a;
+      return a;
+    });
   }
   fromJSON(a: unknown): unknown {
     const type = this.types.find((t) => t.detectRawType(a));
+    const context = this.getContext();
 
-    if (type) {
-      return type.fromJSON(a, this);
-    }
-    if (a instanceof Array) {
-      // TODO: string keys of arrays?
+    return context.visit("fromJSON", a, () => {
+      if (type) {
+        return type.fromJSON(a, context);
+      }
+      if (a instanceof Array) {
+        // TODO: string keys of arrays?
 
-      return a.map((value) => this.fromJSON(value));
-    } else if (a && typeof a === "object") {
-      const result: any = {};
+        return a.map((value) => context.fromJSON(value));
+      } else if (a && typeof a === "object") {
+        const result: any = {};
 
-      Object.keys(a).forEach(
-        (key) => (result[key] = this.fromJSON((a as any)[key]))
-      );
+        Object.keys(a).forEach(
+          (key) => (result[key] = context.fromJSON((a as any)[key]))
+        );
 
-      return result;
-    }
+        return result;
+      }
 
-    return a;
+      return a;
+    });
   }
   parse(input: string): any {
     return this.fromJSON(JSON.parse(input));
   }
   stringify(input: any): string {
     return JSON.stringify(this.toJSON(input));
+  }
+}
+
+export class ParseContext extends XJSON {
+  constructor(public parent: XJSON) {
+    super();
+
+    this.types = parent.types;
+    this.visitors = parent.visitors;
+  }
+
+  visit<Input, Output>(
+    visitorType: "toJSON" | "fromJSON",
+    input: Input,
+    output: () => Output
+  ): Output {
+    let getOutput = () => output();
+
+    this.visitors.forEach((definition) => {
+      const visitor = definition[visitorType];
+      const next = getOutput;
+
+      getOutput = () => visitor(input, next, this);
+    });
+
+    return getOutput();
+  }
+
+  getIdCounter = 0;
+  getId() {
+    return this.getIdCounter++ + "";
   }
 }
 
@@ -164,7 +224,7 @@ defaultInstance.registerType(
   (value): { $binary: string } => ({
     $binary: fromByteArray(value),
   }),
-  ({ $binary }) => toByteArray($binary),
+  ({ $binary }) => toByteArray($binary)
 );
 defaultInstance.registerNominal(
   (value): value is number => typeof value === "number" && isNaN(value),
@@ -223,5 +283,86 @@ defaultInstance.registerNominalClass(
   },
   "Set"
 );
+
+// Circular & duplicate instances
+defaultInstance.registerVisitor(
+  (input, output, parser) => {
+    if (typeof input === "object" && input) {
+      const instanceMap = getRefMap(parser);
+
+      if (instanceMap.has(input)) {
+        const ref = { $$ref: "TODO" };
+        const current = instanceMap.get(input);
+
+        if (current instanceof Array)
+          current.push((value) => (ref.$$ref = value.$$id));
+        else if (current) ref.$$ref = current();
+        else {
+          /* typescript doesn't understand sets */
+        }
+
+        return ref;
+      } else {
+        const needsRef: NeedsRefCallback[] = [];
+        instanceMap.set(input, needsRef);
+
+        const result = output();
+        if (needsRef.length) {
+          const placeholder = result as { $$id: string };
+          placeholder.$$id = parser.getId();
+          needsRef.forEach((cb) => cb(placeholder));
+          instanceMap.set(input, () => placeholder.$$id);
+        } else {
+          instanceMap.set(input, () => {
+            const placeholder = result as { $$id: string };
+            placeholder.$$id = parser.getId();
+            instanceMap.set(input, () => placeholder.$$id);
+            return placeholder.$$id;
+          });
+        }
+
+        return result;
+      }
+    }
+
+    return output();
+  },
+  (input, output, parser) => {
+    const result = output();
+    const instanceMap = getInstanceMap(parser);
+
+    if (input instanceof Object && "$$id" in input) {
+      instanceMap.set((input as { $$id: string }).$$id, result);
+      delete (result as { $$id?: string }).$$id;
+    }
+
+    const walk = (thing: any) => {
+      if (thing instanceof Object) {
+        Object.keys(thing).forEach((key) => {
+          const value = thing[key];
+          if (value instanceof Object && "$$ref" in value) {
+            thing[key] = instanceMap.get(value.$$ref);
+          } else {
+            walk(value);
+          }
+        });
+      }
+    };
+
+    walk(result);
+
+    return result;
+  }
+);
+type NeedsRefCallback = (replacement: { $$id: string }) => void;
+
+function getRefMap(
+  context: any
+): WeakMap<object, NeedsRefCallback[] | (() => string)> {
+  return context.instances || (context.instances = new WeakMap());
+}
+function getInstanceMap(context: any): Map<string, unknown> {
+  return context.instances || (context.instances = new Map());
+}
 
 export default defaultInstance;

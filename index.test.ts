@@ -149,7 +149,7 @@ describe("XJSON", () => {
     });
   });
   describe("builtin types", () => {
-    it.only('should support UInt8Array', () => {
+    it('should support UInt8Array', () => {
       const original = new Uint8Array([0, 0, 0]);
       const serialized = defaultInstance.toJSON(original);
       const parsed = defaultInstance.fromJSON(serialized);
@@ -261,4 +261,42 @@ describe("XJSON", () => {
       expect(stringParsed).toEqual(original);
     })
   });
+  describe("builtin duplicate instance handler", () => {
+    it("should serialize & parse circular objects", () => {
+      const value: { me?: any } = {};
+      value.me = value;
+
+      const rehydrated = defaultInstance.fromJSON(defaultInstance.toJSON(value)) as typeof value;
+      expect(rehydrated).toBeInstanceOf(Object);
+      expect(rehydrated.me).toBeInstanceOf(Object);
+    })
+    it("should rehydrate all child instances", () => {
+      const value: { me?: any } = {};
+      value.me = value;
+
+      const rehydrated = defaultInstance.fromJSON(defaultInstance.toJSON(value)) as typeof value;
+      expect(rehydrated).toBeInstanceOf(Object);
+      expect(rehydrated.me).toBe(rehydrated);
+    })
+    it("should rehydrate sibling instances", () => {
+      const child = {};
+      const value = { a: child, b: child };
+
+      const rehydrated = defaultInstance.fromJSON(defaultInstance.toJSON(value)) as typeof value;
+      expect(rehydrated).toBeInstanceOf(Object);
+      expect(rehydrated.a).toBe(rehydrated.b);
+    })
+    it("should rehydrate multiple instances", () => {
+      const a = {};
+      const b = {};
+      const value = { left: { a, b}, right: {a,b} };
+
+      const rehydrated = defaultInstance.fromJSON(defaultInstance.toJSON(value)) as typeof value;
+      expect(rehydrated).toBeInstanceOf(Object);
+      expect(rehydrated.left.a).toBe(rehydrated.right.a);
+      expect(rehydrated.left.b).toBe(rehydrated.right.b);
+
+      console.log(defaultInstance.toJSON(value));
+    })
+  })
 });
