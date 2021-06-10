@@ -12,6 +12,11 @@ describe("XJSON", () => {
 
       expect(parser.stringify({})).toEqual(JSON.stringify({}));
     });
+    it("should stringify arrays as plain JSON", () => {
+      const parser = new XJSON();
+
+      expect(parser.stringify([])).toEqual(JSON.stringify([]));
+    });
     it("should call fromJSON when parsing", () => {
       const parser = new XJSON();
 
@@ -144,9 +149,16 @@ describe("XJSON", () => {
     });
   });
   describe("builtin types", () => {
-    // it('should support UInt8Array', () => {
-    //   expect(defaultInstance.fromJSON(defaultInstance.toJSON(new UInt8Array()))).toBeInstanceOf(UInt8Array)
-    // })
+    it.only('should support UInt8Array', () => {
+      const original = new Uint8Array([0, 0, 0]);
+      const serialized = defaultInstance.toJSON(original);
+      const parsed = defaultInstance.fromJSON(serialized);
+      expect(parsed).toEqual(original);
+      
+      const stringified = defaultInstance.stringify(original);
+      const stringParsed = defaultInstance.parse(stringified);
+      expect(stringParsed).toEqual(original);
+    })
     it("should support RegExp", () => {
       expect(new RegExp("foo", "g")).toEqual(new RegExp("foo", "g"));
       expect(new RegExp("foo")).not.toEqual(new RegExp("foo", "g"));

@@ -153,6 +153,14 @@ defaultInstance.registerNominal(
   (serialized: string) => BigInt(serialized),
   "BigInt"
 );
+
+// TODO: a more space efficient binary encoding
+defaultInstance.registerType<Uint8Array, { $binary: number[] }>(
+  (value): value is Uint8Array => value instanceof Uint8Array,
+  (value): value is { $binary: number[] } => value && typeof value === "object" && "$binary" in value ? true  : false,
+  (value): { $binary: number[] } => ({ $binary: Buffer.from(value).toJSON().data }),
+  (data) => new Uint8Array(data.$binary)
+);
 defaultInstance.registerNominal(
   (value): value is number => typeof value === "number" && isNaN(value),
   (): [] => [],
